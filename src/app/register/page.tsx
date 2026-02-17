@@ -9,7 +9,6 @@ export default function RegisterParticipant() {
         id: "",
         name: "",
         email: "",
-        cohortId: "c1", // Default cohort
     });
     const [isSuccess, setIsSuccess] = useState(false);
 
@@ -21,7 +20,7 @@ export default function RegisterParticipant() {
         // Reset form after 3 seconds
         setTimeout(() => {
             setIsSuccess(false);
-            setFormData({ id: "", name: "", email: "", cohortId: "c1" });
+            setFormData({ id: "", name: "", email: "" });
         }, 3000);
     };
 
@@ -102,20 +101,6 @@ export default function RegisterParticipant() {
                                     placeholder="taro.yamada@example.com"
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                                 />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    参加する期 (Cohort) <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    value={formData.cohortId}
-                                    onChange={(e) => setFormData({ ...formData, cohortId: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none bg-white"
-                                >
-                                    <option value="c1">2024年度 第1期</option>
-                                    <option value="c2">2024年度 第2期</option>
-                                </select>
                             </div>
 
                             <button
