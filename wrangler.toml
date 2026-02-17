@@ -5,7 +5,7 @@ pages_build_output_dir = "./dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "lecture-app-db"
-database_id = "e0e0e0e0-e0e0-e0e0-e0e0-e0e0e0e0e0e0" # Placeholder for local dev
+database_id = "e07e9bc712f30dde987c0959b76939ff" # Production ID
 
 [[r2_buckets]]
 binding = "BUCKET"
