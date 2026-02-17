@@ -56,8 +56,11 @@ export default function ParticipantDashboard() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <a href="/instructor" className="text-sm text-slate-400 hover:text-blue-600 transition-colors">
+          <div className="mt-6 flex flex-col gap-2 text-center text-sm">
+            <a href="/register" className="text-blue-600 font-medium hover:underline">
+              はじめての方はこちら（新規登録）
+            </a>
+            <a href="/instructor" className="text-slate-400 hover:text-blue-600 transition-colors">
               管理者(講師)はこちら
             </a>
           </div>
