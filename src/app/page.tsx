@@ -10,11 +10,27 @@ export default function ParticipantDashboard() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (userId.trim()) {
-      setIsLoggedIn(true);
-      setError("");
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: userId }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // In a real app, you would set a session/cookie here
+          setIsLoggedIn(true);
+          setError("");
+        } else {
+          setError("IDが見つかりません");
+        }
+      } catch (error) {
+        setError("通信エラーが発生しました");
+      }
     } else {
       setError("参加者IDを入力してください");
     }

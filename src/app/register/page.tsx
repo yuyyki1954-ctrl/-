@@ -12,16 +12,30 @@ export default function RegisterParticipant() {
     });
     const [isSuccess, setIsSuccess] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Simulate API call
-        console.log("Registered:", formData);
-        setIsSuccess(true);
-        // Reset form after 3 seconds
-        setTimeout(() => {
-            setIsSuccess(false);
-            setFormData({ id: "", name: "", email: "" });
-        }, 3000);
+
+        try {
+            const res = await fetch("/api/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formData),
+            });
+
+            if (res.ok) {
+                setIsSuccess(true);
+                setTimeout(() => {
+                    setIsSuccess(false);
+                    setFormData({ id: "", name: "", email: "" });
+                }, 3000);
+            } else {
+                const errorData = await res.json();
+                alert(`登録エラー: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error(error);
+            alert("通信エラーが発生しました");
+        }
     };
 
     return (
