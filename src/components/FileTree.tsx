@@ -1,36 +1,45 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Folder, File, UploadCloud, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
 
 type FileNode = {
     id: string;
     name: string;
     type: "file" | "folder";
+    size?: number;
     children?: FileNode[];
 };
 
-const initialFiles: FileNode[] = [
-    {
-        id: "root-1",
-        name: "課題01_提出物",
-        type: "folder",
-        children: [
-            { id: "f1", name: "report_v1.pdf", type: "file" },
-            { id: "f2", name: "reference.docx", type: "file" },
-        ],
-    },
-    {
-        id: "root-2",
-        name: "02_グループワーク",
-        type: "folder",
-        children: [],
-    },
-];
-
-export function FileTree() {
-    const [files, setFiles] = useState<FileNode[]>(initialFiles);
+export function FileTree({ userId }: { userId: string }) {
+    const [files, setFiles] = useState<FileNode[]>([]);
     const [isDragging, setIsDragging] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const fetchFiles = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/files?userId=${userId}`);
+            const data = await res.json();
+            if (data.files) {
+                // Map API response to FileNode structure
+                // For this prototype, we'll just show a flat list of files
+                const fileNodes: FileNode[] = data.files.map((f: any) => ({
+                    id: f.id.toString(),
+                    name: f.filename,
+                    type: "file",
+                    size: f.size
+                }));
+                setFiles(fileNodes);
+            }
+        } catch (error) {
+            console.error("Failed to fetch files:", error);
+        }
+    }, [userId]);
+
+    // Initial fetch
+    useEffect(() => {
+        if (userId) fetchFiles();
+    }, [userId, fetchFiles]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -42,28 +51,63 @@ export function FileTree() {
         setIsDragging(false);
     }, []);
 
-    const handleDrop = useCallback((e: React.DragEvent) => {
+    const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(false);
+        setIsLoading(true);
 
-        // Simulated file upload
         const droppedFiles = Array.from(e.dataTransfer.files);
         if (droppedFiles.length === 0) return;
 
-        // Create a new folder for the upload batch (Prototype behavior)
-        const newFolder: FileNode = {
-            id: Math.random().toString(36).substr(2, 9),
-            name: `アップロード_${new Date().toLocaleTimeString()}`,
-            type: "folder",
-            children: droppedFiles.map((file) => ({
-                id: Math.random().toString(36).substr(2, 9),
-                name: file.name,
-                type: "file",
-            })),
-        };
+        // Upload each file
+        for (const file of droppedFiles) {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("userId", userId);
 
-        setFiles((prev) => [...prev, newFolder]);
-    }, []);
+            try {
+                const res = await fetch("/api/files", {
+                    method: "POST",
+                    body: formData,
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert(`アップロード失敗 (${file.name}): ${err.error}`);
+                }
+            } catch (error) {
+                console.error(error);
+                alert(`アップロードエラー (${file.name})`);
+            }
+        }
+
+        setIsLoading(false);
+        fetchFiles(); // Refresh list
+    }, [userId, fetchFiles]);
+
+    const handleDelete = async (fileId: string) => {
+        if (!confirm("ファイルを削除しますか？")) return;
+
+        try {
+            const res = await fetch("/api/files", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fileId, userId }),
+            });
+
+            if (res.ok) {
+                fetchFiles();
+            } else {
+                alert("削除に失敗しました");
+            }
+        } catch (error) {
+            alert("削除エラー");
+        }
+    };
+
+    const handleDownload = (fileId: string) => {
+        // Open in new tab to trigger download
+        window.open(`/api/files/${fileId}`, "_blank");
+    };
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
@@ -73,7 +117,9 @@ export function FileTree() {
                     <Folder className="w-4 h-4 text-blue-500" />
                     フォルダ管理
                 </h3>
-                <span className="text-xs text-slate-400">Drag & Drop supported</span>
+                <span className="text-xs text-slate-400">
+                    {isLoading ? "処理中..." : "Only files < 1MB"}
+                </span>
             </div>
 
             {/* Drop Zone / Tree Area */}
@@ -92,7 +138,26 @@ export function FileTree() {
                 ) : (
                     <div className="space-y-1">
                         {files.map((node) => (
-                            <TreeNode key={node.id} node={node} level={0} />
+                            <div
+                                key={node.id}
+                                className="flex items-center gap-2 py-2 px-2 hover:bg-slate-50 rounded-md cursor-pointer text-sm text-slate-700 select-none group"
+                            >
+                                <File className="w-4 h-4 text-slate-400" />
+                                <span className="flex-grow" onClick={() => handleDownload(node.id)}>
+                                    {node.name}
+                                </span>
+                                <span className="text-xs text-slate-300">
+                                    {node.size ? `${(node.size / 1024).toFixed(1)} KB` : ""}
+                                </span>
+                                <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                        onClick={() => handleDelete(node.id)}
+                                        className="p-1 hover:text-red-500 text-slate-300"
+                                    >
+                                        <Trash2 className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
                         ))}
                     </div>
                 )}
@@ -106,55 +171,6 @@ export function FileTree() {
                     </div>
                 )}
             </div>
-        </div>
-    );
-}
-
-function TreeNode({ node, level }: { node: FileNode; level: number }) {
-    const [isOpen, setIsOpen] = useState(true);
-
-    return (
-        <div>
-            <div
-                className="flex items-center gap-2 py-2 px-2 hover:bg-slate-50 rounded-md cursor-pointer text-sm text-slate-700 select-none group"
-                style={{ paddingLeft: `${level * 16 + 8}px` }}
-                onClick={() => node.type === "folder" && setIsOpen(!isOpen)}
-            >
-                <span className="text-slate-400">
-                    {node.type === "folder" ? (
-                        isOpen ? (
-                            <ChevronDown className="w-4 h-4" />
-                        ) : (
-                            <ChevronRight className="w-4 h-4" />
-                        )
-                    ) : (
-                        <span className="w-4" />
-                    )}
-                </span>
-
-                {node.type === "folder" ? (
-                    <Folder className={`w-4 h-4 ${isOpen ? "text-blue-500" : "text-slate-400"}`} />
-                ) : (
-                    <File className="w-4 h-4 text-slate-400" />
-                )}
-
-                <span>{node.name}</span>
-
-                {/* Actions (Mock) */}
-                <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-1 hover:text-red-500 text-slate-300">
-                        <Trash2 className="w-3 h-3" />
-                    </button>
-                </div>
-            </div>
-
-            {node.type === "folder" && isOpen && node.children && (
-                <div>
-                    {node.children.map((child) => (
-                        <TreeNode key={child.id} node={child} level={level + 1} />
-                    ))}
-                </div>
-            )}
         </div>
     );
 }

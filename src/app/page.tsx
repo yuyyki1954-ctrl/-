@@ -126,7 +126,7 @@ export default function ParticipantDashboard() {
 
         {/* File Management */}
         <section className="h-[500px]">
-          <FileTree />
+          <FileTree userId={userId} />
         </section>
 
         {/* Feedback */}

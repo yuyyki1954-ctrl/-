@@ -6,3 +6,4 @@ compatibility_date = "2024-09-23"
 binding = "DB"
 database_name = "lecture-app-db"
 database_id = "fc05aab3-0ab1-4b60-85e5-92eac3fd57f8"
+
