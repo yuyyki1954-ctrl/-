@@ -16,3 +16,12 @@ CREATE TABLE files (
   uploaded_at INTEGER DEFAULT (strftime('%s', 'now')),
   FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
+DROP TABLE IF EXISTS feedback;
+CREATE TABLE feedback (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT,
+  content TEXT,
+  created_at INTEGER DEFAULT (strftime('%s', 'now')),
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);

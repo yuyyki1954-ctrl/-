@@ -3,29 +3,60 @@
 import { useState, useEffect } from "react";
 import { Save, CheckCircle2 } from "lucide-react";
 
-export function FeedbackForm({ userId }: { userId: string }) {
+export function FeedbackForm({ userId, role = "participant" }: { userId: string; role?: "participant" | "instructor" }) {
     const [comment, setComment] = useState("");
     const [reflection, setReflection] = useState("");
     const [isSaved, setIsSaved] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Load from localStorage on mount
+    // Load from API on mount
     useEffect(() => {
-        const savedData = localStorage.getItem(`feedback_${userId}`);
-        if (savedData) {
-            const parsed = JSON.parse(savedData);
-            setComment(parsed.comment || "");
-            setReflection(parsed.reflection || "");
-        }
+        if (!userId) return;
+
+        fetch(`/api/feedback?userId=${userId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.feedback && data.feedback.length > 0) {
+                    // Get latest feedback
+                    const latest = data.feedback[0];
+                    // Parse if it was stored as JSON, or just use content
+                    try {
+                        const parsed = JSON.parse(latest.content);
+                        setComment(parsed.comment || "");
+                        setReflection(parsed.reflection || "");
+                    } catch (e) {
+                        // Fallback for simple text
+                        setReflection(latest.content);
+                    }
+                }
+            })
+            .catch(err => console.error(err));
     }, [userId]);
 
-    const handleSave = () => {
-        localStorage.setItem(
-            `feedback_${userId}`,
-            JSON.stringify({ comment, reflection, updatedAt: new Date().toISOString() })
-        );
-        setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000);
+    const handleSave = async () => {
+        setIsLoading(true);
+        const content = JSON.stringify({ comment, reflection, updatedAt: new Date().toISOString() });
+
+        try {
+            const res = await fetch("/api/feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId, content }),
+            });
+
+            if (res.ok) {
+                setIsSaved(true);
+                setTimeout(() => setIsSaved(false), 3000);
+            } else {
+                alert("保存に失敗しました");
+            }
+        } catch (error) {
+            alert("通信エラーが発生しました");
+        }
+        setIsLoading(false);
     };
+
+    const isParticipant = role === "participant";
 
     return (
         <div className="space-y-8">
@@ -36,10 +67,11 @@ export function FeedbackForm({ userId }: { userId: string }) {
                     本日の振り返り
                 </h3>
                 <textarea
+                    readOnly={!isParticipant}
                     value={reflection}
                     onChange={(e) => setReflection(e.target.value)}
-                    placeholder="講習の気づきや疑問点を入力してください..."
-                    className="w-full h-32 p-4 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none text-slate-700 placeholder:text-slate-300"
+                    placeholder={isParticipant ? "講習の気づきや疑問点を入力してください..." : "参加者の振り返りがここに表示されます"}
+                    className={`w-full h-32 p-4 rounded-xl border border-slate-200 transition-all resize-none text-slate-700 placeholder:text-slate-300 ${!isParticipant ? "bg-slate-50 cursor-not-allowed focus:outline-none" : "focus:border-blue-500 focus:ring-2 focus:ring-blue-100"}`}
                 />
             </section>
 
@@ -51,10 +83,11 @@ export function FeedbackForm({ userId }: { userId: string }) {
                     講師からのコメント
                 </h3>
                 <textarea
+                    readOnly={isParticipant}
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="講師のみ入力可能です（デモでは入力可）"
-                    className="w-full h-32 p-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none text-slate-700 placeholder:text-slate-400 relative z-10"
+                    placeholder={!isParticipant ? "参加者へのコメントを入力してください" : "講師からのコメントがここに表示されます"}
+                    className={`w-full h-32 p-4 rounded-xl border border-slate-200 transition-all resize-none text-slate-700 placeholder:text-slate-400 relative z-10 ${isParticipant ? "bg-slate-50 cursor-not-allowed focus:outline-none" : "focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white"}`}
                 />
             </section>
 
@@ -62,13 +95,14 @@ export function FeedbackForm({ userId }: { userId: string }) {
             <div className="flex justify-end">
                 <button
                     onClick={handleSave}
+                    disabled={isLoading}
                     className={`flex items-center gap-2 px-8 py-3 rounded-full font-bold shadow-md transition-all ${isSaved
-                            ? "bg-green-500 text-white shadow-green-200"
-                            : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 hover:-translate-y-0.5"
-                        }`}
+                        ? "bg-green-500 text-white shadow-green-200"
+                        : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 hover:-translate-y-0.5"
+                        } ${isLoading ? "opacity-50 cursor-wait" : ""}`}
                 >
                     {isSaved ? <CheckCircle2 className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-                    {isSaved ? "保存しました" : "保存する"}
+                    {isSaved ? "保存しました" : isLoading ? "保存中..." : "保存する"}
                 </button>
             </div>
         </div>
